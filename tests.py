@@ -416,11 +416,84 @@ class NIUnitTests(TestCase):
         )
 
 
-#class DeductionsUnitTests(TestCase):
-#    """Class to test the deductions methods"""
-#    def test_ideal_case(self):
-#        """Ideal case test"""
-#        e = EmployeeSalaryInfo("testname")
-#        e.addTaxableIncome([27000])
-#        e.addNonTaxableIncome([3000])
-#        e.addPostTaxExpense([])
+class DeductionsUnitTests(TestCase):
+    """Class to test the deductions methods"""
+    year = '2021-2022'
+    testvalues = {
+        'A':{
+            'incomeTaxable': 24000,
+            'incomeNonTaxable': 0,
+            'pensionPct': 5,
+            'pensionType': 'post_tax',
+            'netIncome': 19273.56,
+        },
+        'B':{
+            'incomeTaxable': 24000,
+            'incomeNonTaxable': 0,
+            'pensionPct': 5,
+            'pensionType': 'pre_tax',
+            'netIncome': 19380.12,
+        },
+        'C':{
+            'incomeTaxable': 24000,
+            'incomeNonTaxable': 3000,
+            'pensionPct': 5,
+            'pensionType': 'pre_tax',
+            'netIncome': 22380.12,
+        },
+        'D':{
+            'incomeTaxable': 27000,
+            'incomeNonTaxable': 3000,
+            'pensionPct': 6,
+            'pensionType': 'post_tax',
+            'netIncome': 24027.48,
+        },
+        'D':{
+            'incomeTaxable': 38254.54,
+            'incomeNonTaxable': 1685,
+            'pensionPct': 6,
+            'pensionType': 'pre_tax',
+            'netIncome': 30055.86,
+        },
+    }
+    
+    def test_ideal_cases(self):
+        """Ideal case test"""
+        for testcase in self.testvalues:
+            
+            if self.testvalues[testcase]['pensionType'] == 'pre_tax':
+                pre_tax_status = True
+                post_tax_status = False
+            elif self.testvalues[testcase]['pensionType'] == 'post_tax':
+                pre_tax_status = False
+                post_tax_status = True
+            else:
+                self.assertFalse(
+                    True, 
+                    msg=f"Pension type set incorrectly in test case {testcase}"
+                )
+
+            e = EmployeeSalaryInfo("testname")
+            e.addTaxableIncome([self.testvalues[testcase]['incomeTaxable']])
+            e.addNonTaxableIncome([self.testvalues[testcase]['incomeNonTaxable']])
+            e.addPension(
+                year=self.year,
+                percentage=self.testvalues[testcase]['pensionPct'],
+                pre_tax=pre_tax_status,
+                post_tax=post_tax_status
+            )
+            net_income = e.getNetIncome(year=self.year)
+
+            self.assertTrue(
+                net_income.status,
+                msg=f"Net income calculation did not return True in test case {testcase}"
+            )
+
+            self.assertEqual(
+                net_income.value,
+                self.testvalues[testcase]['netIncome'],
+                msg="Net income calculation did not return "\
+                    f"pre-calculated value in test case {testcase}"
+            )
+
+

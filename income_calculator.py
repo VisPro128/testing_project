@@ -161,7 +161,7 @@ def isFloatValid(value):
 
 class FloatSuccessType:
     def __init__(self, value, status, message=''):
-        self.value = value
+        self.value = round(value, 2)
         self.status = status
         self.message = message
     
@@ -363,28 +363,51 @@ class EmployeeSalaryInfo(object):
 
         return FloatSuccessType(taxPaid, True)
     
-#    def getPensionDeduction(self, year, percentage, pre_tax, post_tax):
-#        """Return pension"""
-#        if post_tax and pre_tax:
-#            return FloatSuccessType(
-#                0.0, 
-#                False, 
-#                "Pension cannot be both pre and post tax"
-#            )
-#        
-#        try:
-#            upper_band = pensionBands[year]['higher_level']
-#            lower_band = pensionBands[year]['lower_level']
-#
-#        except KeyError:
-#            return FloatSuccessType(0.0, False, "Year not valid")
-#
-#        if isFloatValid(self.incomeTaxable):
-#            incomeTaxable = self.incomeTaxable
-#        else:
-#            return FloatSuccessType(0.0, False, "Taxable income invalid")
-#        
-#        if pre_tax
+    def addPension(self, year, percentage, pre_tax=False, post_tax=False):
+        """Adds pension to expenses"""
+        pension = 0.0
+
+        if post_tax == pre_tax:
+            return FloatSuccessType(
+                0.0, 
+                False, 
+                "Pension must be either pre OR post tax"
+            )
+        
+        if not (percentage >= 0 and percentage <= 100):
+            return FloatSuccessType(
+                0.0,
+                False,
+                "Percentage must be within 0 - 100 range"
+            )
+        
+        try:
+            upper_band = pensionBands[year]['higher_level']
+            lower_band = pensionBands[year]['lower_level']
+
+        except KeyError:
+            return FloatSuccessType(0.0, False, "Year not valid")
+
+        if isFloatValid(self.incomeTaxable):
+            incomeTaxable = self.incomeTaxable
+        else:
+            return FloatSuccessType(0.0, False, "Taxable income invalid")
+        
+        if incomeTaxable <= lower_band:
+            pensionable_earnings = 0.0
+        elif incomeTaxable <= upper_band:
+            pensionable_earnings = incomeTaxable - lower_band
+        else:
+            pensionable_earnings = upper_band - lower_band
+        pension = pensionable_earnings * (percentage/100)
+
+        if post_tax:
+            pension *= 0.8
+            self.addPostTaxExpense([pension])
+        else:
+            self.addPreTaxExpense([pension])
+
+        return FloatSuccessType(pension, True)
 
     def getDeductions(self, year):
         """Return total deductions from incomes"""
@@ -413,3 +436,23 @@ class EmployeeSalaryInfo(object):
         deductions = payePaid + niPaid + expensePostTax + expensePreTax
 
         return FloatSuccessType(deductions, True)
+
+    def getNetIncome(self, year):
+        """Return annual take home pay"""
+        income = self.getGrossIncome()
+        deductions = self.getDeductions(year)
+
+        if not income.status:
+            return FloatSuccessType(
+                0.0,
+                False,
+                income.message
+            )
+        if not deductions.status:
+            return FloatSuccessType(
+                0.0,
+                False,
+                deductions.message
+            )
+        
+        return FloatSuccessType(income.value - deductions.value, True)
